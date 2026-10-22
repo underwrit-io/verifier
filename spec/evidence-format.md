@@ -667,3 +667,29 @@ key alone. A holder of the log key who also rewrites the database and re-checkpo
 the log key accepts and a pinned witness refuses, as in version 3. The heads say nothing about
 sessions other than the pack's subject.
 
+
+## 12. The build statement (any version)
+
+From Underwrit 0.4.0 a pack's `evidence.json` carries a `build` object: what produced the pack, as
+the producer states it. It adds no new check of the record and does not change the format number;
+a verifier that does not know it ignores it, and the manifest's digest of `evidence.json` already
+covers it, so it cannot be changed after the pack is signed.
+
+| Field | Meaning |
+|---|---|
+| `v` | 1 |
+| `version` | the producer's package version |
+| `edition` | `free` (the public package) or `cloud` (the hosted and Enterprise images) |
+| `licence`, `licensee` | the licence id in force, or `none`, and whom it names |
+| `limits` | `{tenants, dataPlanes, source}` that licence allows; `null` is no limit, `source` is `free` without one |
+| `usage`, `overLimit` | the teams and data planes the install counts, and whether that exceeds `limits`; on a data plane these are `null` and the control plane's own statement is under `controlPlane` |
+| `build` | `{status, hash, licenceModule, integrityModule, reason}`: `status` is `signed` (every Python file matches the manifest Underwrit signed at release), `modified` (a file differs, was added or removed, or the release manifest's signature fails), `unsigned` (an installed package with no release manifest), or `source` (a source checkout). `hash` is the SHA-256 of the canonical JSON of `{path: sha256}` over the package's Python files |
+| `controlPlane` | what the data plane's control plane last said about itself: `installId`, `edition`, `licence`, `limits`, `usage`, `overLimit`, `build` |
+
+A verifier SHOULD print it, and SHOULD warn (not fail) on any `build.status` but `signed`, on `overLimit: true` for the pack or its `controlPlane`, and on a `controlPlane` whose
+build is `modified` or `unsigned`. `verify.py --require release` fails a pack whose build is not
+`signed`.
+
+What it proves: that the producer's software said this when it made the pack, under the log key.
+It does not prove the software told the truth. A build edited to misstate its edition or its counts
+can do so; what it cannot do is make a pack whose statement it did not sign.

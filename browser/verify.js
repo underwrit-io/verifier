@@ -218,8 +218,37 @@ async function ed25519Verify(pub, msg, sig) {
   }
 }
 
+/* The build statement (spec §12): what produced the pack, as the producer states it. Reported as
+   notes and warnings, never as a failure: it says which edition and licence made the pack and
+   whether the code was the release Underwrit signed. Mirrors `build_lines` in verify.py. */
+function buildLines(build) {
+  const out = [];
+  try {
+    const b = build.build && typeof build.build === "object" ? build.build : {};
+    const status = String(b.status || "unknown");
+    out.push([`Underwrit ${build.version || "?"}, ${build.edition || "?"} edition, licence ${build.licence || "none"}, ${status} build (code ${String(b.hash || "-").slice(0, 16)})`, false]);
+    if (["modified", "unsigned", "unknown"].includes(status)) out.push([`modified build: ${b.reason || "its code is not the release Underwrit signed"}`, true]);
+    else if (status === "source") out.push(["not a release build: it ran from a source checkout", true]);
+    const cp = build.controlPlane && typeof build.controlPlane === "object" ? build.controlPlane : null;
+    for (const [who, st] of [["this install", build], ["its control plane", cp]]) {
+      if (!st) continue;
+      const cb = st.build && typeof st.build === "object" ? st.build : {};
+      if (st === cp && ["modified", "unsigned"].includes(cb.status)) out.push([`modified build: ${who} runs code that is not the release Underwrit signed`, true]);
+      if (st.overLimit === true) {
+        const lim = st.limits || {}, use = st.usage || {};
+        const counts = `${who} counts ${use.tenants} team(s) and ${use.dataPlanes} data plane(s)`;
+        if (lim.source === "free" || (st.licence || "none") === "none") out.push([`exceeds free limit: ${counts}; the free edition allows one of each`, true]);
+        else out.push([`exceeds its licence: ${counts}, licensed for ${lim.tenants} and ${lim.dataPlanes}`, true]);
+      }
+    }
+  } catch (e) {
+    out.push(["the build statement is malformed", true]);
+  }
+  return out;
+}
+
 /* ---- the verification ---------------------------------------------------------------------
- * Returns {ok, lines: [{level, text}]}. `level` is "pass" | "note" | "fail".
+ * Returns {ok, lines: [{level, text}]}. `level` is "pass" | "note" | "warn" | "fail".
  */
 export async function verifyBundle(buffer, { publicKey = "", witnessKey = "" } = {}) {
   const out = [];
@@ -489,6 +518,10 @@ export async function verifyBundle(buffer, { publicKey = "", witnessKey = "" } =
     }
   } else if (format >= 2) {
     say("note", "merkle: no checkpoint in this bundle — positions not proven, chain hashes only");
+  }
+
+  if (pack.build && typeof pack.build === "object") {
+    for (const [t, bad] of buildLines(pack.build)) say(bad ? "warn" : "note", `build: ${bad ? "WARNING — " : ""}${t}`);
   }
 
   for (const p of problems) say("fail", p);

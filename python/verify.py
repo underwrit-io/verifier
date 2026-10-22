@@ -14,6 +14,10 @@ Checks, each independent of the others:
      the log said it did, in a tree of the size the log signed.
   4. (format 2) The manifest's Ed25519 signature verifies under the same key.
 
+It also prints the pack's build statement — which edition and licence produced it, and whether that
+code is the release Underwrit signed — and warns on a modified build or an install over its limit.
+That is reported, not failed, unless you pass --require release.
+
 What this cannot prove: that the record is complete (a subset cannot show what was left out), and
 origin, unless you obtained the public key from the issuer yourself — the copy in this bundle only
 shows the bundle agrees with itself. Set UNDERWRIT_PUBLIC_KEY to the issuer's published key to check that.
@@ -621,6 +625,38 @@ def parse_note(note):
     return out
 
 
+def build_lines(build):
+    """(text, is_warning) lines for a pack's build statement. Never raises on a malformed one."""
+    out = []
+    try:
+        b = build.get("build") if isinstance(build.get("build"), dict) else {}
+        status = str(b.get("status") or "unknown")
+        out.append((f"Underwrit {build.get('version') or '?'}, {build.get('edition') or '?'} edition, licence "
+                    f"{build.get('licence') or 'none'}, {status} build (code {str(b.get('hash') or '-')[:16]})", False))
+        if status in ("modified", "unsigned", "unknown"):
+            out.append((f"modified build: {b.get('reason') or 'its code is not the release Underwrit signed'}", True))
+        elif status == "source":
+            out.append(("not a release build: it ran from a source checkout", True))
+        cp = build.get("controlPlane") if isinstance(build.get("controlPlane"), dict) else None
+        for who, st in (("this install", build), ("its control plane", cp)):
+            if not st:
+                continue
+            cb = st.get("build") if isinstance(st.get("build"), dict) else {}
+            if st is cp and cb.get("status") in ("modified", "unsigned"):
+                out.append((f"modified build: {who} runs code that is not the release Underwrit signed", True))
+            if st.get("overLimit") is True:
+                lim, use = st.get("limits") or {}, st.get("usage") or {}
+                counts = f"{who} counts {use.get('tenants')} team(s) and {use.get('dataPlanes')} data plane(s)"
+                if lim.get("source") == "free" or (st.get("licence") or "none") == "none":
+                    out.append((f"exceeds free limit: {counts}; the free edition allows one of each", True))
+                else:
+                    out.append((f"exceeds its licence: {counts}, licensed for {lim.get('tenants')} and "
+                                f"{lim.get('dataPlanes')}", True))
+    except (AttributeError, TypeError, ValueError):
+        out.append(("the build statement is malformed", True))
+    return out
+
+
 def _require() -> set:
     """--require a,b or UNDERWRIT_REQUIRE: artefacts whose absence is a failure, not a notice."""
     want = set()
@@ -631,10 +667,10 @@ def _require() -> set:
         elif a == "--require" and i + 1 < len(argv):
             want.update(x.strip() for x in argv[i + 1].split(",") if x.strip())
     want.update(x.strip() for x in os.environ.get("UNDERWRIT_REQUIRE", "").split(",") if x.strip())
-    bad = want - {"signature", "checkpoint", "witness", "timestamp"}
+    bad = want - {"signature", "checkpoint", "witness", "timestamp", "release"}
     if bad:
         raise SystemExit(f"unknown --require item(s): {', '.join(sorted(bad))} "
-                         f"(choose from signature, checkpoint, witness, timestamp)")
+                         f"(choose from signature, checkpoint, witness, timestamp, release)")
     return want
 
 
@@ -1313,6 +1349,21 @@ def main():
                 problems.append(f"session heads: the {label} proof is malformed ({type(exc).__name__})")
     elif manifest.get("format", 1) >= 2:
         print("merkle: no checkpoint in this bundle — positions not proven, chain hashes only")
+
+    # The build statement (spec §12): what produced this pack, as the producer states it. Reported,
+    # never a failure unless --require release asks for a signed release build.
+    build = pack.get("build")
+    if isinstance(build, dict):
+        for line, bad in build_lines(build):
+            print(("build: WARNING — " if bad else "build: ") + line)
+        b = build.get("build") if isinstance(build.get("build"), dict) else {}
+        if "release" in require and b.get("status") != "signed":
+            problems.append(f"build: a {b.get('status') or 'unknown'} build, not a signed Underwrit release, "
+                            "and --require release asks for one")
+    elif "release" in require:
+        problems.append("build: this pack carries no build statement, and --require release asks for one")
+    elif manifest.get("format", 1) >= 2:
+        print("build: no build statement in this pack (made by a version before they were added)")
 
     key = os.environ.get("EVIDENCE_SIGNING_KEY", "").strip()
     signature = manifest.get("signature")

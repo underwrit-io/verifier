@@ -210,8 +210,13 @@ def _source() -> tuple[str, dict, bool]:
     base = control_url()
     if not base or time.time() < _proxy_absent_until:
         return "", {}, False
+    from . import integrity
+    from .node import NODE_ID
+
     tok = node_token()
-    return f"{base}/v1/timestamp", ({"Authorization": f"Bearer {tok}"} if tok else {}), True
+    # The node name and build line go to the control plane only, never to a third-party authority.
+    return f"{base}/v1/timestamp", {"X-Underwrit-Build": integrity.header(), "X-Underwrit-Node": NODE_ID,
+                                    **({"Authorization": f"Bearer {tok}"} if tok else {})}, True
 
 
 _REPORTED: dict[str, float] = {}
