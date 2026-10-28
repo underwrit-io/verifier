@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: MIT
- * Copyright (c) 2026 Underwrit
+ * Copyright (c) 2026 CAID LLC (Underwrit)
  *
  * MIT, although the rest of Underwrit is proprietary. Take it, embed it, ship it.
  *

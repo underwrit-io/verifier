@@ -1,6 +1,6 @@
 """Ed25519, pure Python, after the RFC 8032 §6 reference. Standard library only.
 
-SPDX-License-Identifier: MIT — Copyright (c) 2026 Underwrit. This module is MIT, unlike the
+SPDX-License-Identifier: MIT — Copyright (c) 2026 CAID LLC (Underwrit). This module is MIT, unlike the
 rest of the package (proprietary, see LICENSE), because it is embedded verbatim in the `verify.py`
 inside every evidence bundle and that script has to be copyable into anything, GPLv2 included.
 See NOTICE. (The embed strips this docstring, so the notice the auditor actually receives lives in

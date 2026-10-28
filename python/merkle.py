@@ -1,6 +1,6 @@
 """A Merkle tree over log entries, per RFC 6962 / RFC 9162, with inclusion and consistency proofs.
 
-SPDX-License-Identifier: MIT — Copyright (c) 2026 Underwrit. MIT, unlike the rest of the
+SPDX-License-Identifier: MIT — Copyright (c) 2026 CAID LLC (Underwrit). MIT, unlike the rest of the
 package (proprietary, see LICENSE): this is embedded in every bundle's `verify.py`, which must be copyable anywhere.
 See NOTICE.
 

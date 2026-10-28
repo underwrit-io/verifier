@@ -1,6 +1,6 @@
 """Time-stamping: an external clock for a checkpoint. RFC 3161 first, OpenTimestamps second.
 
-SPDX-License-Identifier: MIT — Copyright (c) 2026 Underwrit. MIT, unlike the rest of the
+SPDX-License-Identifier: MIT — Copyright (c) 2026 CAID LLC (Underwrit). MIT, unlike the rest of the
 package (proprietary, see LICENSE): the response-reading half of this module (`SHA256_OID` through `parse_response`) is
 embedded in every bundle's `verify.py`, which must be copyable anywhere. See NOTICE.
 

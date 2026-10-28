@@ -23,7 +23,7 @@ origin, unless you obtained the public key from the issuer yourself — the copy
 shows the bundle agrees with itself. Set UNDERWRIT_PUBLIC_KEY to the issuer's published key to check that.
 
 SPDX-License-Identifier: MIT
-Copyright (c) 2026 Underwrit
+Copyright (c) 2026 CAID LLC (Underwrit)
 
 This script is MIT, including the Ed25519, Merkle and RFC 3161 code embedded below — deliberately,
 although the rest of Underwrit is proprietary. MIT is compatible with everything, GPLv2
